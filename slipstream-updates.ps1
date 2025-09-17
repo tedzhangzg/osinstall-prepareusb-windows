@@ -30,6 +30,7 @@ $dir_extractediso = "$dir_workingdirroot\iso"
 $dir_updatefiles = "$dir_workingdirroot\upd"
 $dir_wimmount = "$dir_workingdirroot\mnt"
 $dir_extractedwim = "$dir_extractediso\sources\install.wim"
+$path_extractedbootimage = "$dir_extractediso\boot\etfsboot.com"
 
 # create folders
 mkdir $dir_workingdirroot
@@ -64,22 +65,32 @@ https://www.catalog.update.microsoft.com/
 Get-ChildItem -Path "$HOME\Downloads" -Filter "*.iso" | ForEach-Object { Move-Item -Path $_.FullName -Destination $dir_workingdirroot -Force }
 Get-ChildItem -Path "$HOME\Downloads" -Filter "*.msu" | ForEach-Object { Move-Item -Path $_.FullName -Destination $dir_updatefiles -Force }
 
+# get name of iso
+$name_origiso = (Get-ChildItem -Path "$dir_workingdirroot" -Filter "*.iso").Name
+$path_newiso = "$dir_workingdirroot\new_" + "$name_origiso"
+
 # add compression tools to PATH
 # 
 # 7-zip
 if (-Not (Test-Path -Path "$env:ProgramFiles\7-Zip")) {
     winget install --id "7zip.7zip"
 }
-$env:Path += ";$env:ProgramFiles\7-Zip"
-# or add permanently
-# Add-Content -Path $PROFILE -Value '$env:Path += ";$env:ProgramFiles\7-Zip"'
 # 
 # WinRAR
 # if (-Not (Test-Path -Path "$env:ProgramFiles\WinRAR")) {
     # winget install --id "RARLab.WinRAR"
 # }
+
+# add tools to PATH
+# 
+# 7z
+$env:Path += ";$env:ProgramFiles\7-Zip"
+# permanently
+Add-Content -Path $PROFILE -Value '$env:Path += ";$env:ProgramFiles\7-Zip"'
+# 
+# rar unrar
 # $env:Path += ";$env:ProgramFiles\WinRAR"
-# or add permanently
+# permanently
 # Add-Content -Path $PROFILE -Value '$env:Path += ";$env:ProgramFiles\WinRAR"'
 
 # extract ISO
@@ -155,14 +166,54 @@ Enable-WindowsOptionalFeature -Path $dir_wimmount -FeatureName "NetFx3" -All -Li
 # end of mounted install.wim
 ##################################################
 
+# copy ei.cfg
+# 
+# method 1 - downloaded to Downloads
+# $path_eicfg = "$HOME\Downloads\ei.cfg"
+# Copy-Item -Path $path_eicfg -Destination "$dir_extractediso\sources\" -Recurse -Force
+# 
+# method 2 - create new
+$path_eicfg = "$dir_extractediso\sources\ei.cfg"
+New-Item -Path $path_eicfg -ItemType "File"
+Add-Content -Path $path_eicfg -Value "[Channel]"
+Add-Content -Path $path_eicfg -Value "Retail"
+
 # cleanup
-Optimize-WindowsImage -Path $dir_wimmount -StartComponentCleanup
+# 
+# Start-Process -FilePath "dism.exe" -ArgumentList "/Image:$dir_wimmount /Cleanup-Image /StartComponentCleanup /ResetBase" -Wait
+# 
+# to see what is happening
+dism.exe /Image:$dir_wimmount /Cleanup-Image /StartComponentCleanup /ResetBase
+
+# health
+Start-Process -FilePath "dism.exe" -ArgumentList "/Image:$dir_wimmount /Cleanup-Image /ScanHealth" -Wait
+Start-Process -FilePath "dism.exe" -ArgumentList "/Image:$dir_wimmount /Cleanup-Image /RestoreHealth" -Wait
 
 # dismount
 Dismount-WindowsImage -Path $dir_wimmount -Save
 
 # dismount and discard error mounts
 Dismount-WindowsImage -Path $dir_wimmount -Discard
+
+# rebuild iso
+
+# install Windows ADK
+winget install --id "Microsoft.WindowsADK"
+
+# locate
+$path_to_dir_with_oscdimg = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg"
+$path_to_oscdimg = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
+
+# add to path
+$env:Path += ";$path_to_dir_with_oscdimg"
+# permanently
+Add-Content -Path $PROFILE -Value '$env:Path += ";${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg"'
+# 
+# or put in a variable
+$oscdimg = $path_to_oscdimg
+
+# do
+& "$oscdimg" -b"$path_extractedbootimage" -u2 -h -m -o $dir_extractediso $path_newiso
 
 
 

@@ -102,15 +102,23 @@ if ($null -eq $installwim_index) {
 $installwim_index = 10
 
 # mount image
-Get-WindowsImage -ImagePath $dir_extractedwim | Mount-WindowsImage -Index $installwim_index -Path $dir_wimmount
-# Mount-WindowsImage -ImagePath $dir_extractedwim -Index $installwim_index -Path $dir_wimmount
+Mount-WindowsImage -ImagePath $dir_extractedwim -Index $installwim_index -Path $dir_wimmount
 
 ##################################################
 # start of mounted install.wim
 ##################################################
+# order
+# 
+# setup / safeos / dynamic updates
+# servicing stack update - prerequisite, now integrated in cumulative update
+# latest cumulative update - monthly rollup
+# optional update - dot net
+# winpe / boot.wim
+##################################################
 
-# enable netfx3
-Enable-WindowsOptionalFeature -Path $dir_wimmount -FeatureName "NetFx3" -All -LimitAccess -Source "$dir_extractediso\sources\sxs"
+# get packages installed in mounted image
+Get-WindowsPackage -Path $dir_wimmount
+Get-WindowsPackage -Path $dir_wimmount > $HOME\Desktop\out.txt
 
 # ask num_kb
 # 
@@ -118,21 +126,30 @@ if ($null -eq $num_kb) {
     [int]$num_kb = Read-Host -Prompt "Enter KB number "
 }
 # 
-$num_kb = 5065426
-
-# get packages
-Get-WindowsPackage -Path $dir_wimmount
+# $num_kb = 5065426
 
 # add packages
 # 
-# install all directly
-Get-WindowsPackage -Path $dir_wimmount | Add-WindowsPackage -PackagePath $dir_updatefiles
+# add one by one
+Get-ChildItem -Path $dir_updatefiles -Filter "*kb$num_kb*" | ForEach-Object { Add-WindowsPackage -Path $dir_wimmount -PackagePath $_.FullName }
 # 
-# no need use powershell loop one by one
+# install all
+# not recommended, need to follow order
+# 
+# install all - method 1 - add whole directory
+# Add-WindowsPackage -Path $dir_wimmount -PackagePath $dir_updatefiles
+# or
+# install all - method 2 - loop through msu
 # Get-ChildItem -Path $dir_updatefiles | ForEach-Object { Add-WindowsPackage -Path $dir_wimmount -PackagePath $_.FullName }
 # 
-# no need install one by one
-# Get-ChildItem -Path $dir_updatefiles -Filter "*kb$num_kb*" | ForEach-Object { Add-WindowsPackage -Path $dir_wimmount -PackagePath $_.FullName }
+# remove var
+Remove-Variable -Name "num_kb"
+
+# also
+# good to have
+
+# enable netfx3
+Enable-WindowsOptionalFeature -Path $dir_wimmount -FeatureName "NetFx3" -All -LimitAccess -Source "$dir_extractediso\sources\sxs"
 
 ##################################################
 # end of mounted install.wim

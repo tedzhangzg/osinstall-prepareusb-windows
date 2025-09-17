@@ -37,6 +37,9 @@ mkdir $dir_extractediso
 mkdir $dir_updatefiles
 mkdir $dir_wimmount
 
+# delete
+# Remove-Item -Path $dir_extractediso -Recurse -Force
+
 # download
 # into "$HOME\Downloads"
 # 
@@ -96,7 +99,7 @@ if ($null -eq $installwim_index) {
     [int]$installwim_index = Read-Host -Prompt "Enter index "
 }
 # 
-$installwim_index = 6
+$installwim_index = 10
 
 # mount image
 Get-WindowsImage -ImagePath $dir_extractedwim | Mount-WindowsImage -Index $installwim_index -Path $dir_wimmount

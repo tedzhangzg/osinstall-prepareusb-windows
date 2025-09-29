@@ -129,10 +129,16 @@ if ($number_of_partitions -ge 3) {
 
 Write-Host ""
 
-# Ask if want to copy EI.cfg
+# Ask if want to copy ei.cfg
 while ( ($tocopy_eicfg -ne "c") -and ($tocopy_eicfg -ne "b") -and ($tocopy_eicfg -ne "n") ) {
     [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - copy EI.cfg? (c)onsumer , (b)usiness , (n)o "
 }
+
+# Ask if want to create oobe\BypassNRO.cmd
+while ( ($tocreate_bypassnro -ne "y") -and ($tocreate_bypassnro -ne "n") ) {
+    [char]$tocreate_bypassnro = Read-Host -Prompt "Enter letter - create BypassNRO.cmd? (y)es , (n)o "
+}
+
 
 Write-Host ""
 
@@ -195,11 +201,14 @@ Write-Host "Copying ..."
 $source = $driveLetter_mountedISO + ":\"
 $dest1 = $driveLetter_P1 + ":\"
 $dir_eicfg = "$dest1\sources"
+$dir_oobe = "$dest1\oobe"
 if ($number_of_partitions -ge 2) {
     $dest2 = $driveLetter_P2 + ":\"
     $dir_eicfg = "$dest2\sources"
+    $dir_oobe = "$dest2\oobe"
 }
 $path_eicfg = "$dir_eicfg\ei.cfg"
+$path_bypassnrocmd = "$dir_oobe\BypassNRO.cmd"
 if ($number_of_partitions -ge 3) {
     $dest3 = $driveLetter_P3 + ":\"
 }
@@ -283,6 +292,14 @@ switch ($tocopy_eicfg) {
         Write-Host "Invalid option"
         break
     }
+}
+
+# create oobe\BypassNRO.cmd
+if ($tocreate_bypassnro -eq "y") {
+    New-Item -ItemType "directory" -Path "$dir_oobe" | Out-Null
+    Add-Content -Path $path_bypassnrocmd -Value "@echo off"
+    Add-Content -Path $path_bypassnrocmd -Value "reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f"
+    Add-Content -Path $path_bypassnrocmd -Value "shutdown /r /t 0"
 }
 
 Write-Host ""

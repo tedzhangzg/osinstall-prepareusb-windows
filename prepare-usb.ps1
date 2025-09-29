@@ -17,7 +17,6 @@ Write-Host "Starting prepare-usb.ps1 ..."
 # $var = ""
 
 # constants
-$dir_eicfg = "$HOME\Downloads"
 $partitionsize_P1 = 1073741824 # = 1GB
 $partitionsize_P2 = 8589934592 # = 8GB
 $fa32_filesize_limit = 4294967295 # = 4GB
@@ -131,8 +130,8 @@ if ($number_of_partitions -ge 3) {
 Write-Host ""
 
 # Ask if want to copy EI.cfg
-while ( ($tocopy_eicfg -ne "y") -and ($tocopy_eicfg -ne "n") ) {
-    [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - Want to copy EI.cfg ? y , n "
+while ( ($tocopy_eicfg -ne "c") -and ($tocopy_eicfg -ne "b") -and ($tocopy_eicfg -ne "n") ) {
+    [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - copy EI.cfg? (c)onsumer , (b)usiness , (n)o "
 }
 
 Write-Host ""
@@ -192,12 +191,15 @@ Write-Host ""
 # Copy
 Write-Host "Copying ..."
 # 
-# prep
+# prep dir path
 $source = $driveLetter_mountedISO + ":\"
 $dest1 = $driveLetter_P1 + ":\"
+$dir_eicfg = "$dest1\sources"
 if ($number_of_partitions -ge 2) {
     $dest2 = $driveLetter_P2 + ":\"
+    $dir_eicfg = "$dest2\sources"
 }
+$path_eicfg = "$dir_eicfg\ei.cfg"
 if ($number_of_partitions -ge 3) {
     $dest3 = $driveLetter_P3 + ":\"
 }
@@ -254,25 +256,33 @@ Write-Host "... Copying Done"
 Write-Host ""
 
 # Copy EI.cfg
-if ($tocopy_eicfg -eq "y") {
-    switch ($number_of_partitions) {
-        1 {
-            # 1
-            Copy-Item -Path "$dir_eicfg\EI.cfg" -Destination "$dest1\sources\" -Recurse
-            break
-        }
-        { $_ -ge 2 -and $_ -le 3 } {
-            # 2 and 3
-            Copy-Item -Path "$dir_eicfg\EI.cfg" -Destination "$dest2\sources\" -Recurse
-            break
-        }
-        default {
-            # Default
-            Write-Host "Invalid option"
-            break
-        }
+switch ($tocopy_eicfg) {
+    "c" {
+        # consumer
+        Add-Content -Path $path_eicfg -Value "[Channel]"
+        Add-Content -Path $path_eicfg -Value "Retail"
+        Write-Host "... done copying EI.cfg"
+        break
     }
-    Write-Host "... done copying EI.cfg"
+    "b" {
+        # business
+        Add-Content -Path $path_eicfg -Value "[Channel]"
+        Add-Content -Path $path_eicfg -Value "volume"
+        Add-Content -Path $path_eicfg -Value ""
+        Add-Content -Path $path_eicfg -Value "[VL]"
+        Add-Content -Path $path_eicfg -Value "1"
+        break
+    }
+    "n" {
+        # no
+        Write-Host "EI.cfg not copied"
+        break
+    }
+    default {
+        # Default
+        Write-Host "Invalid option"
+        break
+    }
 }
 
 Write-Host ""

@@ -141,7 +141,7 @@ Write-Host "2 partitions - FAT32, NTFS - for install.wim > 4GB"
 Write-Host ""
 # 
 # ask number of partitions
-while ( ($number_of_partitions -lt 1) -or ($number_of_partitions -gt 3) ) {
+while ($number_of_partitions -notin 1..3) {
     [int]$number_of_partitions = Read-Host -Prompt "Enter number of partitions "
 }
 # 
@@ -177,8 +177,8 @@ Write-Host ""
 # 
 $is_orig_eicfg_present = Test-Path -Path $path_orig_eicfg
 Write-Host "Fact - original ei.cfg present - $is_orig_eicfg_present"
-while ( ($tocreate_eicfg -ne "c") -and ($tocreate_eicfg -ne "b") -and ($tocreate_eicfg -ne "y") -and ($tocreate_eicfg -ne "n") ) {
-    [char]$tocreate_eicfg = Read-Host -Prompt "Enter letter - create ei.cfg? (c)onsumer , (b)usiness , (n)o "
+while ($tocreate_eicfg -notin @("c","b","y","n")) {
+    $tocreate_eicfg = (Read-Host -Prompt "Enter letter - create ei.cfg? (c)onsumer , (b)usiness , (n)o ").ToLower()
 }
 # overwrite y with c
 if ($tocreate_eicfg -eq "y") {
@@ -195,7 +195,7 @@ $path_dest_eicfg = "$dir_dest_eicfg\ei.cfg"
 Write-Host ""
 
 # ask if want to create oobe\BypassNRO.cmd
-while ( ($tocreate_bypassnro -ne "y") -and ($tocreate_bypassnro -ne "n") ) {
+while ($tocreate_bypassnro -notin @("y","n")) {
     [char]$tocreate_bypassnro = Read-Host -Prompt "Enter letter - create BypassNRO.cmd? (y)es , (n)o "
 }
 # 
@@ -393,7 +393,7 @@ Write-Host ""
 # dismount
 # 
 # ask if want to dismount ISO
-while ( ($dismount_iso -ne "y") -and ($dismount_iso -ne "n") ) {
+while ($dismount_iso -notin @("y","n")) {
     [char]$dismount_iso = Read-Host -Prompt "Enter letter - Want to dismount ISO ? y , n "
 }
 # 

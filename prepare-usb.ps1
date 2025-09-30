@@ -17,45 +17,51 @@ Write-Host "Starting prepare-usb.ps1 ..."
 # $var = ""
 
 # constants
-$partitionsize_P1 = 1073741824 # = 1GB
-$partitionsize_P2 = 8589934592 # = 8GB
-$fa32_filesize_limit = 4294967295 # = 4GB
-$fat32_partitionsize_limit = 32212254720 # = 32GB
-
+$sizelimit_fat32_file = 4294967295 # = 4GB
+$sizelimit_fat32_partition = 32212254720 # = 32GB
+$size_partition_p1 = 1073741824 # = 1GB
+$size_partition_p2 = 8589934592 # = 8GB
 
 Write-Host ""
-Write-Host ""
-
-
-# mount ISO
-Write-Host "Mount ISO ..."
-
 
 # mount ISO
 # 
-# prep
+Write-Host "Mount ISO ..."
+Write-Host "Select file to mount ..."
+Write-Host "(Close small window to mount manually ...)"
+# 
+# prep env
 Add-Type -AssemblyName "System.Windows.Forms"
 $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+# 
 # select file
 if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     $selectedFilePath = $openFileDialog.FileName
     Write-Output "You selected: $selectedFilePath"
 } else {
-    Write-Output "Manually mount ..."
+    Write-Output "No file selected. Manually mount ..."
 }
+# 
 # check if any file selected
+# if file selected, mount with script
+# if no file selected, mount manually
 if ($null -eq $selectedFilePath) {
     # mount ISO manually
     # 
-    Write-Host "Now - manually mount ISO before continuing ..."
+    # ask user to mount
+    Write-Host "Do Now - manually mount ISO before continuing ..."
     pause
+    # 
+    # ask user to check
     Write-Host "Check - make sure mounted ISO can be seen in This-PC"
     Start-Process -FilePath "explorer.exe" -ArgumentList "shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
     pause
+    # 
     # list drives
     Get-PSDrive
+    # 
     # get drive letter
-    [char]$driveLetter_mountedISO = Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO: "
+    [char]$driveletter_mountedISO = Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO: "
 } else {
     # mount ISO with script
     # 
@@ -63,12 +69,22 @@ if ($null -eq $selectedFilePath) {
     $mountResult = Mount-DiskImage -ImagePath $selectedFilePath -PassThru
     # 
     # get drive letter
-    $driveLetter_mountedISO = ($mountResult | Get-Volume).DriveLetter
+    $driveletter_mountedISO = ($mountResult | Get-Volume).DriveLetter
 }
+# 
+# 
+# derived constants
+$source = $driveletter_mountedISO + ":\"
+$path_installwim = $source + "sources\install.wim"
+$path_orig_eicfg = $source + "sources\ei.cfg"
 
 Write-Host ""
 
-# use diskpart to clean
+# cmd diskpart clean
+# 
+Write-Host "use cmd diskpart to clean USB"
+Write-Host "select disk 1 ; clean ; clean ; exit"
+# 
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c diskpart" -Wait
 
 Write-Host ""
@@ -76,10 +92,10 @@ Write-Host ""
 # get USB disk number
 # 
 # list
-Write-Host ""
-Write-Host "USB disks"
-Write-Host "---------"
+Write-Host " USB disks "
+Write-Host "-----------"
 Get-Disk | Select-Object -Property Number, Size
+# 
 # ask
 while ($disk_number -lt 0) {
     [int]$disk_number = Read-Host -Prompt "Enter number - USB disk number: "
@@ -88,89 +104,120 @@ while ($disk_number -lt 0) {
 Write-Host ""
 
 # do some checks
-Write-Host " Checks on file and partition sizes ..."
 # 
-# check install.wim size
+Write-Host " Checks on file and USB sizes ..."
+# 
+# check size of install.wim > 4GB
 # for >4GB, cannot put in FAT32 partition
-$path_installwim = $driveLetter_mountedISO + ":\sources\install.wim"
-$is_installwim_greaterthan_fourgb = (Get-Item $path_installwim).length -gt $fa32_filesize_limit
-Write-Host "status - install.wim>4GB - $is_installwim_greaterthan_fourgb"
+Write-Host "Checking if size of install.wim > 4GB ..."
+$is_installwim_greaterthan_fourgb = (Get-Item -Path $path_installwim).length -gt $sizelimit_fat32_file
+Write-Host "Fact - install.wim > 4GB - $is_installwim_greaterthan_fourgb"
 # 
-# check USB drive size > 32GB
-$is_usbdrive_greaterthan_32gb = (Get-Disk -Number $disk_number).Size -gt $fat32_partitionsize_limit
-Write-Host "status - USB>32GB - $is_usbdrive_greaterthan_32gb"
+# check size of USB drive > 32GB
+# for >32GB, cannot format whole drive as FAT32
+$is_usbdrive_greaterthan_32gb = (Get-Disk -Number $disk_number).Size -gt $sizelimit_fat32_partition
+Write-Host "Fact - USB > 32GB - $is_usbdrive_greaterthan_32gb"
 
 Write-Host ""
 
-# ask how many partitions
-Write-Host "Partitions details"
-Write-Host "1 partition - FAT32 - for install.wim <= 4GB"
+# partitions and drive letters
+# 
+# ask number of partitions
+Write-Host "Number of partitions ?"
+Write-Host "1 partition - FAT32 - for install.wim < 4GB"
 Write-Host "2 partitions - FAT32, NTFS - for install.wim > 4GB"
-# Write-Host "3 partitions - FAT32, NTFS, exFAT - if data partition is needed"
+# Write-Host "3 partitions - FAT32, NTFS, exFAT - with separate data partition"
 while ( ($number_of_partitions -lt 1) -or ($number_of_partitions -gt 3) ) {
     [int]$number_of_partitions = Read-Host -Prompt "Enter number of partitions "
 }
-
+# 
 Write-Host ""
-
-# list drive letters
+# 
+# list
 Get-PSDrive
-
+# 
 Write-Host ""
-
-# Ask drive letters for each USB partition
-[char]$driveLetter_P1 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1: "
+# 
+# ask drive letters
+[char]$driveletter_p1 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1: "
 if ($number_of_partitions -ge 2) {
-    [char]$driveLetter_P2 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 2 "
+    [char]$driveletter_p2 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 2 "
 }
 if ($number_of_partitions -ge 3) {
-    [char]$driveLetter_P3 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 3 "
+    [char]$driveletter_p3 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 3 "
+}
+# 
+# derived constants
+$dest1 = $driveletter_p1 + ":\"
+if ($number_of_partitions -ge 2) {
+    $dest2 = $driveletter_p2 + ":\"
+}
+if ($number_of_partitions -ge 3) {
+    $dest3 = $driveletter_p3 + ":\"
 }
 
 Write-Host ""
 
-# Ask if want to copy ei.cfg
+# ask if want to create ei.cfg
+# 
+$is_orig_eicfg_present = Test-Path -Path $path_orig_eicfg
+Write-Host "Fact - original ei.cfg present - $is_orig_eicfg_present"
 while ( ($tocopy_eicfg -ne "c") -and ($tocopy_eicfg -ne "b") -and ($tocopy_eicfg -ne "n") ) {
-    [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - copy EI.cfg? (c)onsumer , (b)usiness , (n)o "
+    [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - create ei.cfg? (c)onsumer , (b)usiness , (n)o "
 }
+# 
+# derived constants
+$dir_dest_eicfg = "$dest1\sources"
+if ($number_of_partitions -ge 2) {
+    $dir_dest_eicfg = "$dest2\sources"
+}
+$path_dest_eicfg = "$dir_dest_eicfg\ei.cfg"
 
-# Ask if want to create oobe\BypassNRO.cmd
+Write-Host ""
+
+# ask if want to create oobe\BypassNRO.cmd
 while ( ($tocreate_bypassnro -ne "y") -and ($tocreate_bypassnro -ne "n") ) {
     [char]$tocreate_bypassnro = Read-Host -Prompt "Enter letter - create BypassNRO.cmd? (y)es , (n)o "
 }
-
+# 
+# derived constants
+$dir_oobe = "$dest1\oobe"
+if ($number_of_partitions -ge 2) {
+    $dir_oobe = "$dest2\oobe"
+}
+$path_bypassnrocmd = "$dir_oobe\BypassNRO.cmd"
 
 Write-Host ""
 
-# Start
-
-# format
-Write-Host "Formatting ..."
-Get-Disk $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false
-Write-Host "... Disk Cleared"
+# formatting
 # 
-# partitioning
+# clean
+Write-Host "Clear disk ..."
+Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
+Write-Host "... Disk cleared"
+# 
+# partition
 switch ($number_of_partitions) {
     1 {
         # 1
-        if ((Get-Disk -Number $disk_number).Size -gt $fat32_partitionsize_limit) {
-            New-Partition -DiskNumber $disk_number -Size $fat32_partitionsize_limit -IsActive -DriveLetter $driveLetter_P1 | Format-Volume -FileSystem FAT32 | Out-Null
+        if ((Get-Disk -Number $disk_number).Size -gt $sizelimit_fat32_partition) {
+            New-Partition -DiskNumber $disk_number -Size $sizelimit_fat32_partition -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
         } else {
-            New-Partition -DiskNumber $disk_number -UseMaximumSize -IsActive -DriveLetter $driveLetter_P1 | Format-Volume -FileSystem FAT32 | Out-Null
+            New-Partition -DiskNumber $disk_number -UseMaximumSize -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
         }
         break
     }
     2 {
         # 2
-        New-Partition -DiskNumber $disk_number -Size $partitionsize_P1 -IsActive -DriveLetter $driveLetter_P1 | Format-Volume -FileSystem FAT32 | Out-Null
-        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveLetter_P2 | Format-Volume -FileSystem NTFS | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
+        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS | Out-Null
         break
     }
     3 {
         # 3
-        New-Partition -DiskNumber $disk_number -Size $partitionsize_P1 -IsActive -DriveLetter $driveLetter_P1 | Format-Volume -FileSystem FAT32 | Out-Null
-        New-Partition -DiskNumber $disk_number -Size $partitionsize_P2 -DriveLetter $driveLetter_P2 | Format-Volume -FileSystem NTFS | Out-Null
-        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveLetter_P3 | Format-Volume -FileSystem exFAT | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p2 -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS | Out-Null
+        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p3 | Format-Volume -FileSystem exFAT | Out-Null
         break
     }
     default {
@@ -185,33 +232,20 @@ Write-Host ""
 
 # bootsect
 Write-Host "Making bootable ..."
-$dir_bootsect = $driveLetter_mountedISO + ":\boot"
+$dir_bootsect = $driveletter_mountedISO + ":\boot"
 Push-Location $dir_bootsect
-$cmd_to_run = "bootsect.exe" + " " + "/nt60" + " " + $driveLetter_P1 + ":"
+$cmd_to_run = "bootsect.exe" + " " + "/nt60" + " " + $driveletter_p1 + ":"
 Invoke-Expression $cmd_to_run
 Pop-Location
-Write-Host "... Bootable Done"
+Write-Host "... Done making bootable"
 
 Write-Host ""
 
-# Copy
+# copy
+# 
 Write-Host "Copying ..."
 # 
-# prep dir path
-$source = $driveLetter_mountedISO + ":\"
-$dest1 = $driveLetter_P1 + ":\"
-$dir_eicfg = "$dest1\sources"
-$dir_oobe = "$dest1\oobe"
-if ($number_of_partitions -ge 2) {
-    $dest2 = $driveLetter_P2 + ":\"
-    $dir_eicfg = "$dest2\sources"
-    $dir_oobe = "$dest2\oobe"
-}
-$path_eicfg = "$dir_eicfg\ei.cfg"
-$path_bypassnrocmd = "$dir_oobe\BypassNRO.cmd"
-if ($number_of_partitions -ge 3) {
-    $dest3 = $driveLetter_P3 + ":\"
-}
+# exclusions
 $exclude1 = "sources"
 $exclude2 = "boot.wim"
 $exclude3 = "install.wim"
@@ -260,31 +294,50 @@ switch ($number_of_partitions) {
         break
     }
 }
+# 
 Write-Host "... Copying Done"
 
 Write-Host ""
 
-# Copy EI.cfg
+# create ei.cfg
+# 
+# delete existing ei.cfg if present
+if ( ($is_orig_eicfg_present) -and ($tocopy_eicfg -ne "n") ) {
+    # delete
+    Remove-Item -Path $path_dest_eicfg -Force
+}
+# 
 switch ($tocopy_eicfg) {
     "c" {
         # consumer
-        Add-Content -Path $path_eicfg -Value "[Channel]"
-        Add-Content -Path $path_eicfg -Value "Retail"
-        Write-Host "... done copying EI.cfg"
+        # 
+        # create file
+        # 
+        # add content
+        Add-Content -Path $path_dest_eicfg -Value "[Channel]"
+        Add-Content -Path $path_dest_eicfg -Value "Retail"
+        # 
+        Write-Host "... ei.cfg created"
         break
     }
     "b" {
         # business
-        Add-Content -Path $path_eicfg -Value "[Channel]"
-        Add-Content -Path $path_eicfg -Value "volume"
-        Add-Content -Path $path_eicfg -Value ""
-        Add-Content -Path $path_eicfg -Value "[VL]"
-        Add-Content -Path $path_eicfg -Value "1"
+        # 
+        # create file
+        # 
+        # add content
+        Add-Content -Path $path_dest_eicfg -Value "[Channel]"
+        Add-Content -Path $path_dest_eicfg -Value "volume"
+        Add-Content -Path $path_dest_eicfg -Value ""
+        Add-Content -Path $path_dest_eicfg -Value "[VL]"
+        Add-Content -Path $path_dest_eicfg -Value "1"
+        # 
+        Write-Host "... ei.cfg created"
         break
     }
     "n" {
         # no
-        Write-Host "EI.cfg not copied"
+        Write-Host "ei.cfg not created"
         break
     }
     default {
@@ -295,16 +348,22 @@ switch ($tocopy_eicfg) {
 }
 
 # create oobe\BypassNRO.cmd
+# 
 if ($tocreate_bypassnro -eq "y") {
+    # crreate dir
     New-Item -ItemType "directory" -Path "$dir_oobe" | Out-Null
+    # 
+    # create file
+    # 
+    # add content
     Add-Content -Path $path_bypassnrocmd -Value "@echo off"
     Add-Content -Path $path_bypassnrocmd -Value "reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f"
     Add-Content -Path $path_bypassnrocmd -Value "shutdown /r /t 0"
+    # 
+    Write-Host "... BypassNRO.cmd created"
 }
 
 Write-Host ""
-
-# Final
 
 # dismount
 # 

@@ -27,8 +27,8 @@ Write-Host ""
 # mount ISO
 # 
 Write-Host "Mount ISO ..."
-Write-Host "Select file to mount ..."
-Write-Host "(Close small window to mount manually ...)"
+Write-Host "Select file to mount, Close small window to mount manually"
+Write-Host ""
 # 
 # prep env
 Add-Type -AssemblyName "System.Windows.Forms"
@@ -37,10 +37,12 @@ $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
 # select file
 if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     $selectedFilePath = $openFileDialog.FileName
-    Write-Output "You selected: $selectedFilePath"
+    Write-Output "Selected file: $selectedFilePath"
 } else {
-    Write-Output "No file selected. Manually mount ..."
+    Write-Output "Selected file: none"
 }
+# 
+Write-Host ""
 # 
 # check if any file selected
 # if file selected, mount with script
@@ -50,18 +52,25 @@ if ($null -eq $selectedFilePath) {
     # 
     # ask user to mount
     Write-Host "Do Now - manually mount ISO before continuing ..."
+    Write-Host "Right-click ISO file ; Open with ; Windows Explorer"
     pause
     # 
+    Write-Host ""
+    # 
     # ask user to check
-    Write-Host "Check - make sure mounted ISO can be seen in This-PC"
+    Write-Host "Check now - make sure mounted ISO can be seen in This-PC"
     Start-Process -FilePath "explorer.exe" -ArgumentList "shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
     pause
+    # 
+    # Write-Host ""
     # 
     # list drives
     Get-PSDrive
     # 
+    Write-Host ""
+    # 
     # get drive letter
-    [char]$driveletter_mountedISO = Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO: "
+    [char]$driveletter_mountedISO = Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO "
 } else {
     # mount ISO with script
     # 
@@ -98,7 +107,7 @@ Get-Disk | Select-Object -Property Number, Size
 # 
 # ask
 while ($disk_number -lt 0) {
-    [int]$disk_number = Read-Host -Prompt "Enter number - USB disk number: "
+    [int]$disk_number = Read-Host -Prompt "Enter number - USB disk number "
 }
 
 Write-Host ""
@@ -122,11 +131,15 @@ Write-Host ""
 
 # partitions and drive letters
 # 
-# ask number of partitions
-Write-Host "Number of partitions ?"
+# list partitions and use case
+Write-Host "Number of partitions"
 Write-Host "1 partition - FAT32 - for install.wim < 4GB"
 Write-Host "2 partitions - FAT32, NTFS - for install.wim > 4GB"
 # Write-Host "3 partitions - FAT32, NTFS, exFAT - with separate data partition"
+# 
+Write-Host ""
+# 
+# ask number of partitions
 while ( ($number_of_partitions -lt 1) -or ($number_of_partitions -gt 3) ) {
     [int]$number_of_partitions = Read-Host -Prompt "Enter number of partitions "
 }
@@ -139,7 +152,8 @@ Get-PSDrive
 Write-Host ""
 # 
 # ask drive letters
-[char]$driveletter_p1 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1: "
+Write-Host "Drive letters"
+[char]$driveletter_p1 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1 "
 if ($number_of_partitions -ge 2) {
     [char]$driveletter_p2 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 2 "
 }
@@ -162,8 +176,12 @@ Write-Host ""
 # 
 $is_orig_eicfg_present = Test-Path -Path $path_orig_eicfg
 Write-Host "Fact - original ei.cfg present - $is_orig_eicfg_present"
-while ( ($tocopy_eicfg -ne "c") -and ($tocopy_eicfg -ne "b") -and ($tocopy_eicfg -ne "n") ) {
-    [char]$tocopy_eicfg = Read-Host -Prompt "Enter letter - create ei.cfg? (c)onsumer , (b)usiness , (n)o "
+while ( ($tocreate_eicfg -ne "c") -and ($tocreate_eicfg -ne "b") -and ($tocreate_eicfg -ne "y") -and ($tocreate_eicfg -ne "n") ) {
+    [char]$tocreate_eicfg = Read-Host -Prompt "Enter letter - create ei.cfg? (c)onsumer , (b)usiness , (n)o "
+}
+# overwrite y with c
+if ($tocreate_eicfg -eq "y") {
+    $tocreate_eicfg = "c"
 }
 # 
 # derived constants
@@ -194,9 +212,10 @@ Write-Host ""
 # clean
 Write-Host "Clear disk ..."
 Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
-Write-Host "... Disk cleared"
+Write-Host "... Done"
 # 
 # partition
+Write-Host "Partitioning and formatting disk ..."
 switch ($number_of_partitions) {
     1 {
         # 1
@@ -226,7 +245,7 @@ switch ($number_of_partitions) {
         break
     }
 }
-Write-Host "... Formatting Done"
+Write-Host "... Done"
 
 Write-Host ""
 
@@ -237,7 +256,7 @@ Push-Location $dir_bootsect
 $cmd_to_run = "bootsect.exe" + " " + "/nt60" + " " + $driveletter_p1 + ":"
 Invoke-Expression $cmd_to_run
 Pop-Location
-Write-Host "... Done making bootable"
+Write-Host "... Done"
 
 Write-Host ""
 
@@ -295,21 +314,22 @@ switch ($number_of_partitions) {
     }
 }
 # 
-Write-Host "... Copying Done"
+Write-Host "... Done"
 
 Write-Host ""
 
 # create ei.cfg
 # 
 # delete existing ei.cfg if present
-if ( ($is_orig_eicfg_present) -and ($tocopy_eicfg -ne "n") ) {
+if ( ($is_orig_eicfg_present) -and ($tocreate_eicfg -ne "n") ) {
     # delete
     Remove-Item -Path $path_dest_eicfg -Force
 }
 # 
-switch ($tocopy_eicfg) {
+switch ($tocreate_eicfg) {
     "c" {
         # consumer
+        Write-Host "Creating ei.cfg ..."
         # 
         # create file
         # 
@@ -317,11 +337,12 @@ switch ($tocopy_eicfg) {
         Add-Content -Path $path_dest_eicfg -Value "[Channel]"
         Add-Content -Path $path_dest_eicfg -Value "Retail"
         # 
-        Write-Host "... ei.cfg created"
+        Write-Host "... Done"
         break
     }
     "b" {
         # business
+        Write-Host "Creating ei.cfg ..."
         # 
         # create file
         # 
@@ -332,7 +353,7 @@ switch ($tocopy_eicfg) {
         Add-Content -Path $path_dest_eicfg -Value "[VL]"
         Add-Content -Path $path_dest_eicfg -Value "1"
         # 
-        Write-Host "... ei.cfg created"
+        Write-Host "... Done"
         break
     }
     "n" {
@@ -350,6 +371,9 @@ switch ($tocopy_eicfg) {
 # create oobe\BypassNRO.cmd
 # 
 if ($tocreate_bypassnro -eq "y") {
+    # proceed to create
+    Write-Host "Creating oobe\BypassNRO.cmd ..."
+    # 
     # crreate dir
     New-Item -ItemType "directory" -Path "$dir_oobe" | Out-Null
     # 
@@ -360,7 +384,7 @@ if ($tocreate_bypassnro -eq "y") {
     Add-Content -Path $path_bypassnrocmd -Value "reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f"
     Add-Content -Path $path_bypassnrocmd -Value "shutdown /r /t 0"
     # 
-    Write-Host "... BypassNRO.cmd created"
+    Write-Host "... Done"
 }
 
 Write-Host ""

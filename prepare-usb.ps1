@@ -114,18 +114,19 @@ Write-Host ""
 
 # do some checks
 # 
-Write-Host " Checks on file and USB sizes ..."
+Write-Host "Some checks on file and USB sizes ..."
 # 
 # check size of install.wim > 4GB
 # for >4GB, cannot put in FAT32 partition
-Write-Host "Checking if size of install.wim > 4GB ..."
 $is_installwim_greaterthan_fourgb = (Get-Item -Path $path_installwim).length -gt $sizelimit_fat32_file
 Write-Host "Fact - install.wim > 4GB - $is_installwim_greaterthan_fourgb"
 # 
 # check size of USB drive > 32GB
 # for >32GB, cannot format whole drive as FAT32
 $is_usbdrive_greaterthan_32gb = (Get-Disk -Number $disk_number).Size -gt $sizelimit_fat32_partition
-Write-Host "Fact - USB > 32GB - $is_usbdrive_greaterthan_32gb"
+Write-Host "Fact - USB-Disk > 32GB - $is_usbdrive_greaterthan_32gb"
+# 
+Write-Host "... Done"
 
 Write-Host ""
 

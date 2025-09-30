@@ -70,7 +70,7 @@ if ($null -eq $selectedFilePath) {
     Write-Host ""
     # 
     # get drive letter
-    [char]$driveletter_mountedISO = Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO "
+    [char]$driveletter_mountedISO = (Read-Host -Prompt "Enter letter - Drive Letter of Mounted ISO ").ToLower()
 } else {
     # mount ISO with script
     # 
@@ -154,12 +154,12 @@ Write-Host ""
 # 
 # ask drive letters
 Write-Host "Drive letters"
-[char]$driveletter_p1 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1 "
+[char]$driveletter_p1 = (Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 1 ").ToLower()
 if ($number_of_partitions -ge 2) {
-    [char]$driveletter_p2 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 2 "
+    [char]$driveletter_p2 = (Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 2 ").ToLower()
 }
 if ($number_of_partitions -ge 3) {
-    [char]$driveletter_p3 = Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 3 "
+    [char]$driveletter_p3 = (Read-Host -Prompt "Enter letter - Drive Letter of USB Partition 3 ").ToLower()
 }
 # 
 # derived constants
@@ -196,7 +196,7 @@ Write-Host ""
 
 # ask if want to create oobe\BypassNRO.cmd
 while ($tocreate_bypassnro -notin @("y","n")) {
-    [char]$tocreate_bypassnro = Read-Host -Prompt "Enter letter - create BypassNRO.cmd? (y)es , (n)o "
+    $tocreate_bypassnro = Read-Host -Prompt "Enter letter - create BypassNRO.cmd? (y)es , (n)o "
 }
 # 
 # derived constants
@@ -394,7 +394,7 @@ Write-Host ""
 # 
 # ask if want to dismount ISO
 while ($dismount_iso -notin @("y","n")) {
-    [char]$dismount_iso = Read-Host -Prompt "Enter letter - Want to dismount ISO ? y , n "
+    $dismount_iso = (Read-Host -Prompt "Enter letter - Want to dismount ISO ? y , n ").ToLower()
 }
 # 
 if ($dismount_iso -eq "y") {

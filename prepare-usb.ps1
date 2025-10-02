@@ -215,6 +215,11 @@ Write-Host "Clear disk ..."
 Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
 Write-Host "... Done"
 # 
+# initialize to GPT
+# Write-Host "Initialize disk ..."
+# Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT
+# Write-Host "... Done"
+# 
 # partition
 Write-Host "Partitioning and formatting disk ..."
 switch ($number_of_partitions) {

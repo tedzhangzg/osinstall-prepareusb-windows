@@ -89,6 +89,14 @@ $path_orig_eicfg = $source + "sources\ei.cfg"
 
 Write-Host ""
 
+# get partition type
+# 
+# while ($partition_type -notin @("g","m")) {
+#     $partition_type = (Read-Host -Prompt "Enter letter - Partition Type - (G)PT , (M)BR ").ToLower()
+# }
+
+Write-Host ""
+
 # cmd diskpart clean
 # 
 Write-Host "use cmd diskpart to clean USB"
@@ -216,9 +224,12 @@ Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$fals
 Write-Host "... Done"
 # 
 # initialize to GPT
-# Write-Host "Initialize disk ..."
-# Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT
-# Write-Host "... Done"
+# if ($partition_type -eq "g") {
+#     Write-Host "Initialize disk to GPT ..."
+#     Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
+#     Write-Host "... Done"
+# }
+# 
 # 
 # partition
 Write-Host "Partitioning and formatting disk ..."

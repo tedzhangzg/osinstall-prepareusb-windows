@@ -231,12 +231,12 @@ Write-Host "... Done"
 if ($partition_style -eq "g") {
     # gpt
     Write-Host "Initialize disk to GPT ..."
-    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
+    # Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
     Write-Host "... Done"
 } else {
     # mbr
     Write-Host "Initialize disk to MBR ..."
-    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
+    # Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
     Write-Host "... Done"
 }
 # 

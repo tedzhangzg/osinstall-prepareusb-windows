@@ -89,14 +89,6 @@ $path_orig_eicfg = $source + "sources\ei.cfg"
 
 Write-Host ""
 
-# get partition type
-# 
-# while ($partition_type -notin @("g","m")) {
-#     $partition_type = (Read-Host -Prompt "Enter letter - Partition Type - (G)PT , (M)BR ").ToLower()
-# }
-
-Write-Host ""
-
 # cmd diskpart clean
 # 
 Write-Host "use cmd diskpart to clean USB"
@@ -135,6 +127,18 @@ $is_usbdrive_greaterthan_32gb = (Get-Disk -Number $disk_number).Size -gt $sizeli
 Write-Host "Fact - USB-Disk > 32GB - $is_usbdrive_greaterthan_32gb"
 # 
 Write-Host "... Done"
+
+Write-Host ""
+
+# get partition type
+# 
+$partition_style = "m"
+while ($partition_style -notin @("g","m")) {
+    $partition_style = (Read-Host -Prompt "Enter letter - Partition Type? (g)pt , (m)br ").ToLower()
+}
+Write-Host "CONFIRMED - PartitionStyle: $partition_style"
+# 
+# derived constants
 
 Write-Host ""
 
@@ -223,12 +227,18 @@ Write-Host "Clear disk ..."
 Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
 Write-Host "... Done"
 # 
-# initialize to GPT
-# if ($partition_type -eq "g") {
-#     Write-Host "Initialize disk to GPT ..."
-#     Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
-#     Write-Host "... Done"
-# }
+# initialize
+if ($partition_style -eq "g") {
+    # gpt
+    Write-Host "Initialize disk to GPT ..."
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
+    Write-Host "... Done"
+} else {
+    # mbr
+    Write-Host "Initialize disk to MBR ..."
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
+    Write-Host "... Done"
+}
 # 
 # 
 # partition
@@ -237,23 +247,23 @@ switch ($number_of_partitions) {
     1 {
         # 1
         if ((Get-Disk -Number $disk_number).Size -gt $sizelimit_fat32_partition) {
-            New-Partition -DiskNumber $disk_number -Size $sizelimit_fat32_partition -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
+            New-Partition -DiskNumber $disk_number -Size $sizelimit_fat32_partition -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 -Confirm:$false | Out-Null
         } else {
-            New-Partition -DiskNumber $disk_number -UseMaximumSize -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
+            New-Partition -DiskNumber $disk_number -UseMaximumSize -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 -Confirm:$false | Out-Null
         }
         break
     }
     2 {
         # 2
-        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
-        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 -Confirm:$false | Out-Null
+        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS -Confirm:$false | Out-Null
         break
     }
     3 {
         # 3
-        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 | Out-Null
-        New-Partition -DiskNumber $disk_number -Size $size_partition_p2 -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS | Out-Null
-        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p3 | Format-Volume -FileSystem exFAT | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p1 -IsActive -DriveLetter $driveletter_p1 | Format-Volume -FileSystem FAT32 -Confirm:$false | Out-Null
+        New-Partition -DiskNumber $disk_number -Size $size_partition_p2 -DriveLetter $driveletter_p2 | Format-Volume -FileSystem NTFS -Confirm:$false | Out-Null
+        New-Partition -DiskNumber $disk_number -UseMaximumSize -DriveLetter $driveletter_p3 | Format-Volume -FileSystem exFAT -Confirm:$false | Out-Null
         break
     }
     default {

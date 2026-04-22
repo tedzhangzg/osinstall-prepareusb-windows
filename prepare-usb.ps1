@@ -20,7 +20,7 @@ Write-Host "Starting prepare-usb.ps1 ..."
 $sizelimit_fat32_file = 4294967295 # = 4GB
 $sizelimit_fat32_partition = 32212254720 # = 32GB
 $size_partition_p1 = 1073741824 # = 1GB
-$size_partition_p2 = 8589934592 # = 8GB
+$size_partition_p2 = 17179869184 # = 16GB
 
 Write-Host ""
 

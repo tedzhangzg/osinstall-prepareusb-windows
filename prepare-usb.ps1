@@ -250,6 +250,8 @@ Write-Host ""
 # 
 # cd /d e:\boot (assume e: is the mounted DVD drive letter)
 # bootsect.exe /nt60 j:
+# 
+# type nul > L:\files_go_here.txt
 ##################################################
 
 

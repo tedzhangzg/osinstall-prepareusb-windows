@@ -234,15 +234,18 @@ Write-Host ""
 # DO NOT DO - convert gpt
 # 
 # create partition primary size=1024
+# select partition 1
 # active
 # format fs=fat32 quick
 # assign letter=j
 # 
 # create partition primary size=16384
+# select partition 2
 # format fs=ntfs quick
 # assign letter=k
 # 
 # create partition primary
+# select partition 3
 # format fs=exfat quick
 # assign letter=l
 # 

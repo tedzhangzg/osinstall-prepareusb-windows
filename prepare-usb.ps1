@@ -220,6 +220,39 @@ $path_bypassnrocmd = "$dir_oobe\BypassNRO.cmd"
 
 Write-Host ""
 
+
+##################################################
+# manual in diskpart
+##################################################
+# diskpart
+# 
+# list disk
+# select disk 1
+# clean
+# clean
+# 
+# DO NOT DO - convert gpt
+# 
+# create partition primary size=1024
+# active
+# format fs=fat32 quick
+# assign letter=j
+# 
+# create partition primary size=16384
+# format fs=ntfs quick
+# assign letter=k
+# 
+# create partition primary
+# format fs=exfat quick
+# assign letter=l
+# 
+# exit
+# 
+# cd /d e:\boot (assume e: is the mounted DVD drive letter)
+# bootsect.exe /nt60 j:
+##################################################
+
+
 # formatting
 # 
 # clean

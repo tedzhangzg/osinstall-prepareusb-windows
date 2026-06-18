@@ -221,7 +221,7 @@ $path_bypassnrocmd = "$dir_oobe\BypassNRO.cmd"
 Write-Host ""
 
 # run diskpart script
-# diskpart /s diskpart_script.txt
+# diskpart /s diskpart-script.txt
 
 # formatting
 # 

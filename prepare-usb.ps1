@@ -227,19 +227,23 @@ Write-Host ""
 # 
 # clean
 Write-Host "Clear disk ..."
-Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
+try {
+    Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop | Out-Null
+} catch {
+    Write-Host "Disk already raw/uninitialized, skipping Clear-Disk"
+}
 Write-Host "... Done"
 # 
 # initialize
 if ($partition_style -eq "g") {
     # gpt
     Write-Host "Initialize disk to GPT ..."
-    # Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
     Write-Host "... Done"
 } else {
     # mbr
     Write-Host "Initialize disk to MBR ..."
-    # Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
     Write-Host "... Done"
 }
 # 
@@ -281,11 +285,20 @@ Write-Host ""
 
 # bootsect
 Write-Host "Making bootable ..."
+# 
 $dir_bootsect = $driveletter_mountedISO + ":\boot"
-Push-Location $dir_bootsect
-$cmd_to_run = "bootsect.exe" + " " + "/nt60" + " " + $driveletter_p1 + ":"
-Invoke-Expression $cmd_to_run
-Pop-Location
+$needsPush = -Not (Test-Path -Path ".\bootsect.exe")
+# 
+if ($needsPush) {
+    Push-Location $dir_bootsect
+}
+# 
+& .\bootsect.exe /nt60 "$($driveletter_p1):"
+# 
+if ($needsPush) {
+    Pop-Location
+}
+# 
 Write-Host "... Done"
 
 Write-Host ""

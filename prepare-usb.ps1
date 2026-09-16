@@ -226,25 +226,32 @@ Write-Host ""
 # formatting
 # 
 # clean + initialize
-# only clears/reinitializes if the disk isn't already in the desired state, to avoid noisy/expected errors
+# Clear-Disk wipes partitions/data - skip only when the disk is RAW (nothing to clear, and Clear-Disk would error).
+# Initialize-Disk sets the partition style - skip only when the disk already has the style we want.
 $desired_partition_style = if ($partition_style -eq "g") { "GPT" } else { "MBR" }
 $disk = Get-Disk -Number $disk_number
 # 
 Write-Host "Checking disk initialization ..."
 if ($disk.PartitionStyle -eq "RAW") {
-    # truly uninitialized - safe to initialize directly
+    # truly uninitialized - nothing to clear, just initialize
     Write-Host "Initialize disk to $desired_partition_style ..."
     Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle $desired_partition_style | Out-Null
     Write-Host "... Done"
-} elseif ($disk.PartitionStyle -eq $desired_partition_style) {
-    # already initialized with the style we want - nothing to do
-    Write-Host "Disk already initialized as $desired_partition_style, skipping Clear-Disk and Initialize-Disk"
 } else {
-    # initialized, but wrong style - clear first, then initialize with desired style
-    Write-Host "Disk is $($disk.PartitionStyle), converting to $desired_partition_style ..."
+    # already initialized (GPT or MBR) - clear any existing partitions/data first
+    Write-Host "Clear disk ..."
     Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
-    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle $desired_partition_style | Out-Null
     Write-Host "... Done"
+    # 
+    if ($disk.PartitionStyle -eq $desired_partition_style) {
+        # already the style we want - no need to re-initialize
+        Write-Host "Disk already $desired_partition_style, skipping Initialize-Disk"
+    } else {
+        # wrong style - initialize with desired style
+        Write-Host "Initialize disk to $desired_partition_style ..."
+        Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle $desired_partition_style | Out-Null
+        Write-Host "... Done"
+    }
 }
 # 
 # 

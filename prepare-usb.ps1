@@ -225,25 +225,25 @@ Write-Host ""
 
 # formatting
 # 
-# clean
-Write-Host "Clear disk ..."
-try {
-    Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop | Out-Null
-} catch {
-    Write-Host "Disk already raw/uninitialized, skipping Clear-Disk"
-}
-Write-Host "... Done"
+# clean + initialize
+# only clears/reinitializes if the disk isn't already in the desired state, to avoid noisy/expected errors
+$desired_partition_style = if ($partition_style -eq "g") { "GPT" } else { "MBR" }
+$disk = Get-Disk -Number $disk_number
 # 
-# initialize
-if ($partition_style -eq "g") {
-    # gpt
-    Write-Host "Initialize disk to GPT ..."
-    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle GPT | Out-Null
+Write-Host "Checking disk initialization ..."
+if ($disk.PartitionStyle -eq "RAW") {
+    # truly uninitialized - safe to initialize directly
+    Write-Host "Initialize disk to $desired_partition_style ..."
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle $desired_partition_style | Out-Null
     Write-Host "... Done"
+} elseif ($disk.PartitionStyle -eq $desired_partition_style) {
+    # already initialized with the style we want - nothing to do
+    Write-Host "Disk already initialized as $desired_partition_style, skipping Clear-Disk and Initialize-Disk"
 } else {
-    # mbr
-    Write-Host "Initialize disk to MBR ..."
-    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle MBR | Out-Null
+    # initialized, but wrong style - clear first, then initialize with desired style
+    Write-Host "Disk is $($disk.PartitionStyle), converting to $desired_partition_style ..."
+    Get-Disk -Number $disk_number | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false | Out-Null
+    Get-Disk -Number $disk_number | Initialize-Disk -PartitionStyle $desired_partition_style | Out-Null
     Write-Host "... Done"
 }
 # 
